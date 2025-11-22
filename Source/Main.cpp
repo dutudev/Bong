@@ -1,5 +1,7 @@
 #include "raylib.h"
 #include "raymath.h"
+#include "../headers/bongfont.h"
+#include "../headers/BongLogo.h"
 #include <iostream>
 #include <string>
 
@@ -14,13 +16,18 @@ bool ok = true;
 
 void DrawNet() {
 	for (int i = 0; i < netNumber; i++) {
-		DrawRectangle(390, 600 / (float)(netNumber - 1) * i - 5, 10, 10, {255, 255, 255, 100});
+		DrawRectangle(395, 600 / (float)(netNumber - 1) * i - 5, 10, 10, {255, 255, 255, 100});
 	}
 }
 
-void DrawScore(Vector2 score) {
-	DrawText(to_string((int)score.x).c_str(), 267, 40, 24, WHITE);
-	DrawText(to_string((int)score.y).c_str(), 533, 40, 24, WHITE);
+void DrawScore(Vector2 score, Font font) {
+	int mText = MeasureTextEx(font, to_string((int)score.x).c_str(), 36, 2).x;
+	/* debug center text
+	DrawRectangle(249, 40, 36, 36, {255, 255, 255, 100});
+	DrawRectangle(515, 40, 36, 36, { 255, 255, 255, 100 });*/
+	DrawTextEx(font, to_string((int)score.x).c_str(), { 267.0f - mText / 2.0f, 40 }, 36, 2, WHITE);
+	mText = MeasureTextEx(font, to_string((int)score.y).c_str(), 36, 2).x;
+	DrawTextEx(font, to_string((int)score.y).c_str(), { 533.0f - mText / 2.0f, 40 }, 36, 2, WHITE);
 }
 
 void AddPoint(Vector2 &score, Vector2 scoreToAdd) {
@@ -66,7 +73,7 @@ class Ball {
 			radius = 8;
 			MAXSPEED = 250;
 			speed = Vector2Normalize(startSpeed) * MAXSPEED;
-			position = { 400 - (float)radius/2, 300 - (float)radius/2};
+			position = { 400, 300};
 		}
 		
 		void Draw() {
@@ -98,7 +105,7 @@ class Ball {
 		void ResetBall() {
 			MAXSPEED = 250;
 			speed = { 0, 0 };
-			position = position = { 400 - (float)radius / 2, 300 - (float)radius / 2 };
+			position = position = { 400, 300 };
 		}
 
 		void SetSpeed(Vector2 startSpeed) {
@@ -121,11 +128,25 @@ class Ball {
 };
 
 int main() {
-	Font f = LoadFont("font.ttf");
-
-	cout << ExportFontAsCode(LoadFont("font.ttf"), (string(GetWorkingDirectory()) + "font.h").c_str());
 	SetTargetFPS(60);
 	InitWindow(800, 600, "Pong");
+	Font robotoFont = LoadFont_bongFont();
+	Image logoImg;
+	logoImg.data = BONGLOGO_DATA;
+	logoImg.height = BONGLOGO_HEIGHT;
+	logoImg.width = BONGLOGO_WIDTH;
+	logoImg.format = BONGLOGO_FORMAT;
+	logoImg.mipmaps = 1;
+	Texture logoTex = LoadTextureFromImage(logoImg);
+	//ExportImage(logo, "BongLogo.h");
+	/*
+	cout << GetWorkingDirectory() << "\n";
+	if (f.texture.id == 0) {
+		cout << "Failed to load\n";
+	}
+	string exportPath = (string)GetWorkingDirectory() + "bongFont.h";
+	cout << exportPath << '\n';
+	cout << ExportFontAsCode(LoadFont("RobotoMono-Bold.ttf"), exportPath.c_str()) << '\n';*/
 	//Vector2 playerPos = { 400, 300 };
 	Vector2 score = { 0, 0 };
 	float timeToStart = 3.0;
@@ -133,64 +154,88 @@ int main() {
 	Paddle player = Paddle({ 25 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
 	Paddle enemy = Paddle({ 775 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
 	Ball ball = Ball({ 200, 150 });
+	int currentScene = 0; // 0 - menu, 1 - game
 	while (!WindowShouldClose()) {
 
-
+		
 		//Logic
-		int dir = 0;
-		if (IsKeyDown(KEY_W)) {
-			dir--;
-		}
-		if (IsKeyDown(KEY_S)) {
-			dir++;
-		}
-		player.Move(dir * speed);
-
-		if (ball.GetBallPos().y > enemy.GetPaddlePos().y + paddleSize.y / 2) {
-			enemy.Move(180);
-		}
-		if (ball.GetBallPos().y < enemy.GetPaddlePos().y + paddleSize.y / 2) {
-			enemy.Move(-180);
-		}
-
-		ball.Move(player.GetPaddlePos(), enemy.GetPaddlePos());
-
-		//ResetMatch on point
-		if (ball.GetBallPos().x <= 0 || ball.GetBallPos().x + 2 * ball.GetBallRadius() >= 800) {
-			if (ball.GetBallPos().x <= 400) {
-				AddPoint(score, { 0, 1 });
-				lastPoint = -1;
+		switch (currentScene) {
+		case 0:
+			break;
+		case 1:
+			int dir = 0;
+			if (IsKeyDown(KEY_W)) {
+				dir--;
 			}
-			else {
-				AddPoint(score, { 1, 0 });
-				lastPoint = 1;
+			if (IsKeyDown(KEY_S)) {
+				dir++;
 			}
-			timeToStart = 3.0;
-			ball.ResetBall();
-		}
+			player.Move(dir * speed);
 
-		if (Vector2Length(ball.GetBallSpeed()) == 0 && timeToStart <= 0) {
-			ball.SetSpeed({ (float)lastPoint * 200, 150 });
+			if (ball.GetBallPos().y > enemy.GetPaddlePos().y + paddleSize.y / 2) {
+				enemy.Move(180);
+			}
+			if (ball.GetBallPos().y < enemy.GetPaddlePos().y + paddleSize.y / 2) {
+				enemy.Move(-180);
+			}
+
+			ball.Move(player.GetPaddlePos(), enemy.GetPaddlePos());
+
+			//ResetMatch on point
+			if (ball.GetBallPos().x <= 0 || ball.GetBallPos().x + 2 * ball.GetBallRadius() >= 800) {
+				if (ball.GetBallPos().x <= 400) {
+					AddPoint(score, { 0, 1 });
+					lastPoint = -1;
+				}
+				else {
+					AddPoint(score, { 1, 0 });
+					lastPoint = 1;
+				}
+				timeToStart = 3.0;
+				ball.ResetBall();
+			}
+
+			if (Vector2Length(ball.GetBallSpeed()) == 0 && timeToStart <= 0) {
+				ball.SetSpeed({ (float)lastPoint * 200, 150 });
+			}
+			else if (timeToStart >= 0) {
+				timeToStart -= GetFrameTime();
+			}
+			break;
 		}
-		else if(timeToStart >= 0) {
-			timeToStart -= GetFrameTime();
-		}
+		
 
 
 		//Drawing
 		BeginDrawing();
 		ClearBackground(BLACK);
 
-		DrawNet();
-		ball.Draw();
-		player.Draw();
-		enemy.Draw();
-		DrawScore(score);
+		switch (currentScene) {
+		case 0:
+			DrawTextureEx(logoTex, { 144, -26  + (float)sin(GetTime()) * 8}, 0, 4, WHITE);
+			DrawTextEx(robotoFont, "Press space to play", { 400 - MeasureTextEx(robotoFont, "Press space to play", 36, 0).x/2, 360 }, 36, 0, WHITE);
+			DrawTextEx(robotoFont, "Made by dutudev", { 400 - MeasureTextEx(robotoFont, "Made by dutudev", 16, 0).x / 2, 580 }, 16, 0, {255, 255, 255, 200});
+			if (IsKeyPressed(KEY_SPACE)) {
+				currentScene = 1;
+				// restart game
+			}
+			break;
+			
+		case 1:
+			
+
+			DrawNet();
+			ball.Draw();
+			player.Draw();
+			enemy.Draw();
+			DrawScore(score, robotoFont);
+			break;
+		}
 
 		EndDrawing();
 
 	}
-
+	UnloadTexture(logoTex);
 	CloseWindow();
 
 	return 0;
