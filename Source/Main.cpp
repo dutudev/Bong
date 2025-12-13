@@ -10,8 +10,7 @@ using namespace std;
 const Vector2 paddleSize = { 10, 100 };
 const float speed = 400.0;
 const int netNumber = 12;
-bool ok = true;
-
+int currentMode = 0;
 
 
 void DrawNet() {
@@ -128,6 +127,7 @@ class Ball {
 };
 
 int main() {
+
 	SetTargetFPS(60);
 	InitWindow(800, 600, "Pong");
 	Font robotoFont = LoadFont_bongFont();
@@ -138,7 +138,8 @@ int main() {
 	logoImg.format = BONGLOGO_FORMAT;
 	logoImg.mipmaps = 1;
 	Texture logoTex = LoadTextureFromImage(logoImg);
-	//ExportImage(logo, "BongLogo.h");
+	//Image logo = LoadImage("BongLogo.png");
+	//ExportImageAsCode(logo, ((string)GetWorkingDirectory() + "\\BongLogo.h").c_str());
 	/*
 	cout << GetWorkingDirectory() << "\n";
 	if (f.texture.id == 0) {
@@ -155,12 +156,16 @@ int main() {
 	Paddle enemy = Paddle({ 775 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
 	Ball ball = Ball({ 200, 150 });
 	int currentScene = 0; // 0 - menu, 1 - game
+	
 	while (!WindowShouldClose()) {
 
 		
 		//Logic
 		switch (currentScene) {
 		case 0:
+			if (IsKeyPressed(KEY_W)) {
+				currentMode = (currentMode + 1) % 2;
+			}
 			break;
 		case 1:
 			int dir = 0;
@@ -212,8 +217,10 @@ int main() {
 
 		switch (currentScene) {
 		case 0:
-			DrawTextureEx(logoTex, { 144, -26  + (float)sin(GetTime()) * 8}, 0, 4, WHITE);
+			DrawTextureEx(logoTex, { 400.0f - logoTex.width * 4 / 2, floor(80 + pow((float)sin(1.5f*GetTime()), 2.0f) * 12 )}, 0, 4, WHITE);
 			DrawTextEx(robotoFont, "Press space to play", { 400 - MeasureTextEx(robotoFont, "Press space to play", 36, 0).x/2, 360 }, 36, 0, WHITE);
+			//DrawTextEx(robotoFont, "Press space to pleeeeey", { 400 - MeasureTextEx(robotoFont, "Press space to play", 36, 0).x / 2, 360 }, 36, 0, WHITE);
+			DrawTextEx(robotoFont, ("Current Mode : " + to_string(currentMode + 1) + "p").c_str(), {400 - MeasureTextEx(robotoFont, ("Current Mode : " + to_string(currentMode + 1) + "p").c_str() , 28, 0).x / 2, 400}, 28, 0, WHITE);
 			DrawTextEx(robotoFont, "Made by dutudev", { 400 - MeasureTextEx(robotoFont, "Made by dutudev", 16, 0).x / 2, 580 }, 16, 0, {255, 255, 255, 200});
 			if (IsKeyPressed(KEY_SPACE)) {
 				currentScene = 1;
