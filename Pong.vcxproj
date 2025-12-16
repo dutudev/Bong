@@ -24,6 +24,7 @@
   <ItemGroup>
     <ClInclude Include="headers\bongFont.h" />
     <ClInclude Include="headers\BongLogo.h" />
+    <ClInclude Include="headers\selectSound.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

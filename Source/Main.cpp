@@ -2,6 +2,9 @@
 #include "raymath.h"
 #include "../headers/bongfont.h"
 #include "../headers/BongLogo.h"
+#include "../headers/selectSound.h"
+#include "../headers/scoreSound.h"
+#include "../headers/hitSound.h"
 #include <iostream>
 #include <string>
 
@@ -11,7 +14,8 @@ const Vector2 paddleSize = { 10, 100 };
 const float speed = 400.0;
 const int netNumber = 12;
 int currentMode = 0;
-
+bool shouldExit = false;
+Sound selectSound, scoreSound, hitSound;
 
 void DrawNet() {
 	for (int i = 0; i < netNumber; i++) {
@@ -32,6 +36,8 @@ void DrawScore(Vector2 score, Font font) {
 void AddPoint(Vector2 &score, Vector2 scoreToAdd) {
 	score = { score.x + scoreToAdd.x, score.y + scoreToAdd.y };
 }
+
+
 
 //make classes here, maybe move them to a separate folder later
 class Paddle {
@@ -54,6 +60,10 @@ class Paddle {
 
 		void Draw(){
 			DrawRectangle(position.x, position.y, paddleSize.x, paddleSize.y, WHITE);
+		}
+
+		void setPos(Vector2 pos) {
+			position = pos;
 		}
 
 		Vector2 GetPaddlePos() {
@@ -82,6 +92,7 @@ class Ball {
 		void Move(Vector2 player, Vector2 enemy) {
 			if ((position.y + radius >= 600 && speed.y >= 0) || (position.y - radius <= 0 && speed.y <= 0)) {
 				speed.y = -speed.y;
+				PlaySound(hitSound);
 			}
 
 			if (CheckCollisionCircleRec(position, radius, { player.x, player.y, paddleSize.x, paddleSize.y }) && speed.x <= 0) {
@@ -89,12 +100,14 @@ class Ball {
 				speed.x = -speed.x;
 				MAXSPEED += 25;
 				speed = Vector2Normalize(speed) * MAXSPEED;
+				PlaySound(hitSound);
 			}
 			if (CheckCollisionCircleRec(position, radius, { enemy.x, enemy.y, paddleSize.x, paddleSize.y }) && speed.x >= 0) {
 				speed.y = ((float)(position.y + radius - (enemy.y + paddleSize.y / 2)) / 50 * MAXSPEED / 2);
 				speed.x = -speed.x;
 				MAXSPEED += 25;
 				speed = Vector2Normalize(speed) * MAXSPEED;
+				PlaySound(hitSound);
 			}
 
 			
@@ -129,7 +142,9 @@ class Ball {
 int main() {
 
 	SetTargetFPS(60);
+	SetExitKey(KEY_NULL);
 	InitWindow(800, 600, "Pong");
+	InitAudioDevice();
 	Font robotoFont = LoadFont_bongFont();
 	Image logoImg;
 	logoImg.data = BONGLOGO_DATA;
@@ -138,6 +153,27 @@ int main() {
 	logoImg.format = BONGLOGO_FORMAT;
 	logoImg.mipmaps = 1;
 	Texture logoTex = LoadTextureFromImage(logoImg);
+	Wave currentWave;
+	currentWave.frameCount = SELECT_FRAME_COUNT;
+	currentWave.sampleRate = SELECT_SAMPLE_RATE;
+	currentWave.sampleSize = SELECT_SAMPLE_SIZE;
+	currentWave.channels = SELECT_CHANNELS;
+	currentWave.data = SELECT_DATA;
+	selectSound = LoadSoundFromWave(currentWave);
+	currentWave.frameCount = SCORE_FRAME_COUNT;
+	currentWave.sampleRate = SCORE_SAMPLE_RATE;
+	currentWave.sampleSize = SCORE_SAMPLE_SIZE;
+	currentWave.channels = SCORE_CHANNELS;
+	currentWave.data = SCORE_DATA;
+	scoreSound = LoadSoundFromWave(currentWave);
+	currentWave.frameCount = HIT_FRAME_COUNT;
+	currentWave.sampleRate = HIT_SAMPLE_RATE;
+	currentWave.sampleSize = HIT_SAMPLE_SIZE;
+	currentWave.channels = HIT_CHANNELS;
+	currentWave.data = HIT_DATA;
+	hitSound = LoadSoundFromWave(currentWave);
+	//Wave select = LoadWave("score.wav");
+	//ExportWaveAsCode(select, "score");
 	//Image logo = LoadImage("BongLogo.png");
 	//ExportImageAsCode(logo, ((string)GetWorkingDirectory() + "\\BongLogo.h").c_str());
 	/*
@@ -149,6 +185,9 @@ int main() {
 	cout << exportPath << '\n';
 	cout << ExportFontAsCode(LoadFont("RobotoMono-Bold.ttf"), exportPath.c_str()) << '\n';*/
 	//Vector2 playerPos = { 400, 300 };
+	if (IsAudioDeviceReady) {
+		SetMasterVolume(0.5f);
+	}
 	Vector2 score = { 0, 0 };
 	float timeToStart = 3.0;
 	int lastPoint = 0;
@@ -157,7 +196,8 @@ int main() {
 	Ball ball = Ball({ 200, 150 });
 	int currentScene = 0; // 0 - menu, 1 - game
 	
-	while (!WindowShouldClose()) {
+	while (!shouldExit) {
+
 
 		
 		//Logic
@@ -165,9 +205,26 @@ int main() {
 		case 0:
 			if (IsKeyPressed(KEY_W)) {
 				currentMode = (currentMode + 1) % 2;
+				PlaySound(selectSound);
+			}
+			if (IsKeyPressed(KEY_SPACE)) {
+				currentScene = 1;
+				PlaySound(selectSound);
+				// restart game
+			}
+			if (IsKeyPressed(KEY_ESCAPE) || WindowShouldClose()) {
+				shouldExit = true;
 			}
 			break;
 		case 1:
+			if (IsKeyPressed(KEY_ESCAPE) || WindowShouldClose()) {
+				player.setPos({ 25 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
+				enemy.setPos({ 775 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
+				ball.ResetBall();
+				ball.SetSpeed({ 200, 150 });
+				score = { 0, 0 };
+				currentScene = 0;
+			}
 			int dir = 0;
 			if (IsKeyDown(KEY_W)) {
 				dir--;
@@ -176,14 +233,25 @@ int main() {
 				dir++;
 			}
 			player.Move(dir * speed);
-
-			if (ball.GetBallPos().y > enemy.GetPaddlePos().y + paddleSize.y / 2) {
-				enemy.Move(180);
+			
+			if (currentMode == 0) {
+				if (ball.GetBallPos().y > enemy.GetPaddlePos().y + paddleSize.y / 2) {
+					enemy.Move(180);
+				}
+				if (ball.GetBallPos().y < enemy.GetPaddlePos().y + paddleSize.y / 2) {
+					enemy.Move(-180);
+				}
 			}
-			if (ball.GetBallPos().y < enemy.GetPaddlePos().y + paddleSize.y / 2) {
-				enemy.Move(-180);
+			else {
+				dir = 0;
+				if (IsKeyDown(KEY_UP)) {
+					dir--;
+				}
+				else if (IsKeyDown(KEY_DOWN)) {
+					dir++;
+				}
+				enemy.Move(dir * speed);
 			}
-
 			ball.Move(player.GetPaddlePos(), enemy.GetPaddlePos());
 
 			//ResetMatch on point
@@ -196,6 +264,7 @@ int main() {
 					AddPoint(score, { 1, 0 });
 					lastPoint = 1;
 				}
+				PlaySound(scoreSound);
 				timeToStart = 3.0;
 				ball.ResetBall();
 			}
@@ -220,12 +289,8 @@ int main() {
 			DrawTextureEx(logoTex, { 400.0f - logoTex.width * 4 / 2, floor(80 + pow((float)sin(1.5f*GetTime()), 2.0f) * 12 )}, 0, 4, WHITE);
 			DrawTextEx(robotoFont, "Press space to play", { 400 - MeasureTextEx(robotoFont, "Press space to play", 36, 0).x/2, 360 }, 36, 0, WHITE);
 			//DrawTextEx(robotoFont, "Press space to pleeeeey", { 400 - MeasureTextEx(robotoFont, "Press space to play", 36, 0).x / 2, 360 }, 36, 0, WHITE);
-			DrawTextEx(robotoFont, ("Current Mode : " + to_string(currentMode + 1) + "p").c_str(), {400 - MeasureTextEx(robotoFont, ("Current Mode : " + to_string(currentMode + 1) + "p").c_str() , 28, 0).x / 2, 400}, 28, 0, WHITE);
+			DrawTextEx(robotoFont, ("Current Mode (w) : " + to_string(currentMode + 1) + "p").c_str(), {400 - MeasureTextEx(robotoFont, ("Current Mode (w) : " + to_string(currentMode + 1) + "p").c_str() , 28, 0).x / 2, 400}, 28, 0, WHITE);
 			DrawTextEx(robotoFont, "Made by dutudev", { 400 - MeasureTextEx(robotoFont, "Made by dutudev", 16, 0).x / 2, 580 }, 16, 0, {255, 255, 255, 200});
-			if (IsKeyPressed(KEY_SPACE)) {
-				currentScene = 1;
-				// restart game
-			}
 			break;
 			
 		case 1:
@@ -242,6 +307,11 @@ int main() {
 		EndDrawing();
 
 	}
+
+	UnloadSound(selectSound);
+	UnloadSound(hitSound);
+	UnloadSound(scoreSound);
+	CloseAudioDevice();
 	UnloadTexture(logoTex);
 	CloseWindow();
 
