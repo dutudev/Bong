@@ -23,7 +23,7 @@ void DrawNet() {
 	}
 }
 
-void DrawScore(Vector2 score, Font font) {
+void DrawScore(Vector2 score, Font& font) {
 	int mText = MeasureTextEx(font, to_string((int)score.x).c_str(), 36, 2).x;
 	/* debug center text
 	DrawRectangle(249, 40, 36, 36, {255, 255, 255, 100});
@@ -37,7 +37,24 @@ void AddPoint(Vector2 &score, Vector2 scoreToAdd) {
 	score = { score.x + scoreToAdd.x, score.y + scoreToAdd.y };
 }
 
-
+void DrawWinnerText(const int& winner, const int& mode, Font& robotoFont) {
+	if (mode == 0) {
+		if (winner == 1) {
+			DrawTextEx(robotoFont, "Player Scored", { 400 - MeasureTextEx(robotoFont, "Player Scored", 36, 0).x / 2, 180 }, 36, 0, WHITE);
+		}
+		else {
+			DrawTextEx(robotoFont, "Enemy Scored", { 400 - MeasureTextEx(robotoFont, "Enemy Scored", 36, 0).x / 2, 180 }, 36, 0, WHITE);
+		}
+	}
+	else {
+		if (winner == 1) {
+			DrawTextEx(robotoFont, "Player 1 Scored", { 400 - MeasureTextEx(robotoFont, "Player 1 Scored", 36, 0).x / 2, 180 }, 36, 0, WHITE);
+		}
+		else {
+			DrawTextEx(robotoFont, "Player 2 Scored", { 400 - MeasureTextEx(robotoFont, "Player 2 Scored", 36, 0).x / 2, 180 }, 36, 0, WHITE);
+		}
+	}
+}
 
 //make classes here, maybe move them to a separate folder later
 class Paddle {
@@ -117,7 +134,7 @@ class Ball {
 		void ResetBall() {
 			MAXSPEED = 250;
 			speed = { 0, 0 };
-			position = position = { 400, 300 };
+			position = { 400, 300 };
 		}
 
 		void SetSpeed(Vector2 startSpeed) {
@@ -189,7 +206,7 @@ int main() {
 		SetMasterVolume(0.5f);
 	}
 	Vector2 score = { 0, 0 };
-	float timeToStart = 3.0;
+	float timeToStart = 3.0, winnerShow = 0.0;
 	int lastPoint = 0;
 	Paddle player = Paddle({ 25 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
 	Paddle enemy = Paddle({ 775 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
@@ -217,6 +234,7 @@ int main() {
 			}
 			break;
 		case 1:
+			winnerShow -= GetFrameTime();
 			if (IsKeyPressed(KEY_ESCAPE) || WindowShouldClose()) {
 				player.setPos({ 25 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
 				enemy.setPos({ 775 - paddleSize.x / 2, 300 - paddleSize.y / 2 });
@@ -267,6 +285,7 @@ int main() {
 				PlaySound(scoreSound);
 				timeToStart = 3.0;
 				ball.ResetBall();
+				winnerShow = 2.8f;
 			}
 
 			if (Vector2Length(ball.GetBallSpeed()) == 0 && timeToStart <= 0) {
@@ -300,6 +319,9 @@ int main() {
 			ball.Draw();
 			player.Draw();
 			enemy.Draw();
+			if (winnerShow >= 0.0f) {
+				DrawWinnerText(lastPoint, currentMode, robotoFont);
+			}
 			DrawScore(score, robotoFont);
 			break;
 		}
