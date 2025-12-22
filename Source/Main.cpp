@@ -156,7 +156,7 @@ class Ball {
 		}
 };
 
-int main() {
+int WinMain() {
 
 	SetTargetFPS(60);
 	SetExitKey(KEY_NULL);
